@@ -500,7 +500,7 @@ f:SetScript("OnEvent", function()
     local sender = arg2
     local language = arg3
     local channelNumber = arg8
-    if (channelNumber == 2 or channelNumber == 4) then
+    if (channelNumber == 2 or channelNumber == 4 or channelNumber == 5) then
       CleanupOldEntries()
       local lowerMsg = string.lower(msg)
         for i = 1, table.getn(keywords) do
