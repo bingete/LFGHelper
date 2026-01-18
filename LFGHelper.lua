@@ -1,3 +1,140 @@
+-- =============================================================
+--  UI CONSTRUCTION (Replaces LFGHelper.xml)
+-- =============================================================
+
+-- Shared Backdrop Table
+local backdrop = {
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    tile = true, tileSize = 32, edgeSize = 32,
+    insets = { left = 11, right = 12, top = 12, bottom = 11 }
+}
+
+-- 1. MAIN FRAME
+local mainFrame = CreateFrame("Frame", "LFGHelperFrame", UIParent)
+mainFrame:SetWidth(620)
+mainFrame:SetHeight(400)
+mainFrame:SetPoint("CENTER", UIParent, "CENTER")
+mainFrame:SetBackdrop(backdrop)
+mainFrame:SetMovable(true)
+mainFrame:SetResizable(true)
+mainFrame:SetMinResize(500, 400)
+mainFrame:EnableMouse(true)
+mainFrame:SetClampedToScreen(true)
+mainFrame:Hide()
+
+-- Main Frame Scripts
+mainFrame:RegisterForDrag("LeftButton")
+mainFrame:SetScript("OnMouseDown", function()
+    if arg1 == "LeftButton" then
+        this:StartMoving()
+    elseif arg1 == "RightButton" then
+        this:StartSizing("BOTTOMRIGHT")
+    end
+end)
+mainFrame:SetScript("OnMouseUp", function()
+    this:StopMovingOrSizing()
+end)
+mainFrame:SetScript("OnShow", function()
+    -- These global functions are defined lower in the script
+    if LFGHelper_OnLoad then LFGHelper_OnLoad() end
+    if InitializeVisibleInstance then InitializeVisibleInstance() end
+    if UpdateMainFrame then UpdateMainFrame() end
+end)
+
+-- Main Frame Title
+local mainTitle = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+mainTitle:SetPoint("TOP", mainFrame, "TOP", 0, -20)
+mainTitle:SetText("LFG Helper")
+
+-- 2. FILTER FRAME
+local filterFrame = CreateFrame("Frame", "LFGHelperFilterFrame", UIParent)
+filterFrame:SetFrameStrata("HIGH")
+filterFrame:SetWidth(550) -- Set specific size from XML OnLoad
+filterFrame:SetHeight(450)
+filterFrame:SetPoint("CENTER", UIParent, "CENTER")
+filterFrame:SetBackdrop(backdrop)
+filterFrame:EnableMouse(true)
+filterFrame:SetMovable(true)
+filterFrame:Hide()
+
+filterFrame:RegisterForDrag("LeftButton")
+filterFrame:SetScript("OnMouseDown", function() if arg1 == "LeftButton" then this:StartMoving() end end)
+filterFrame:SetScript("OnMouseUp", function() this:StopMovingOrSizing() end)
+filterFrame:SetScript("OnShow", function() if RefreshInstanceCheckboxes then RefreshInstanceCheckboxes() end end)
+
+local filterTitle = filterFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+filterTitle:SetPoint("TOP", filterFrame, "TOP", 0, -20)
+filterTitle:SetText("Instances Filters")
+
+local filterClose = CreateFrame("Button", nil, filterFrame, "UIPanelCloseButton")
+filterClose:SetPoint("TOPRIGHT", filterFrame, "TOPRIGHT", -15, -15)
+
+-- 3. OPTION FRAME
+local optionFrame = CreateFrame("Frame", "LFGHelperOptionFrame", UIParent)
+optionFrame:SetFrameStrata("HIGH")
+optionFrame:SetWidth(550)
+optionFrame:SetHeight(450)
+optionFrame:SetPoint("CENTER", UIParent, "CENTER")
+optionFrame:SetBackdrop(backdrop)
+optionFrame:EnableMouse(true)
+optionFrame:SetMovable(true)
+optionFrame:Hide()
+
+optionFrame:RegisterForDrag("LeftButton")
+optionFrame:SetScript("OnMouseDown", function() if arg1 == "LeftButton" then this:StartMoving() end end)
+optionFrame:SetScript("OnMouseUp", function() this:StopMovingOrSizing() end)
+optionFrame:SetScript("OnShow", function() if LoadLFGHelperOptions then LoadLFGHelperOptions() end end)
+
+local optionTitle = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+optionTitle:SetPoint("TOP", optionFrame, "TOP", 0, -20)
+optionTitle:SetText("Addon options")
+
+local optionClose = CreateFrame("Button", nil, optionFrame, "UIPanelCloseButton")
+optionClose:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -15, -15)
+
+-- 4. MAIN FRAME CHILDREN (Buttons & Scroll)
+
+-- Filter Button
+local btnFilter = CreateFrame("Button", "LFGHelperFilterButton", mainFrame, "UIPanelButtonTemplate")
+btnFilter:SetWidth(100)
+btnFilter:SetHeight(22)
+btnFilter:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -50)
+btnFilter:SetText("Filters...")
+btnFilter:SetScript("OnClick", function()
+    if filterFrame:IsVisible() then filterFrame:Hide() else filterFrame:Show() end
+end)
+
+-- Option Button
+local btnOption = CreateFrame("Button", "LFGHelperOptionButton", mainFrame, "UIPanelButtonTemplate")
+btnOption:SetWidth(100)
+btnOption:SetHeight(22)
+btnOption:SetPoint("LEFT", btnFilter, "RIGHT", 10, 0)
+btnOption:SetText("Options...")
+btnOption:SetScript("OnClick", function()
+    if optionFrame:IsVisible() then optionFrame:Hide() else optionFrame:Show() end
+end)
+
+-- Main Close Button
+local btnClose = CreateFrame("Button", "LFGHelperCloseButton", mainFrame, "UIPanelCloseButton")
+btnClose:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -15, -15)
+
+-- Scroll Frame
+local scrollFrame = CreateFrame("ScrollFrame", "LFGHelperScroll", mainFrame, "UIPanelScrollFrameTemplate")
+scrollFrame:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -80)
+scrollFrame:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -45, 20)
+
+-- Scroll Content
+local scrollContent = CreateFrame("Frame", "LFGHelperScrollContent")
+scrollContent:SetWidth(440)
+scrollContent:SetHeight(1)
+scrollFrame:SetScrollChild(scrollContent)
+
+
+-- =============================================================
+--  LOGIC (Original LFGHelper.lua)
+-- =============================================================
+
 local db_version = 1180
 
 -- Keywords to detect LFG/LFM
@@ -500,6 +637,7 @@ f:SetScript("OnEvent", function()
     local sender = arg2
     local language = arg3
     local channelNumber = arg8
+    -- ADDED CHANNEL 5 HERE AS PER YOUR PREVIOUS REQUEST
     if (channelNumber == 2 or channelNumber == 4 or channelNumber == 5) then
       CleanupOldEntries()
       local lowerMsg = string.lower(msg)
