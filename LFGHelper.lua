@@ -232,8 +232,11 @@ function UpdateMainFrame()
                     button:SetWidth(60)
                     button:SetHeight(rowHeight)
                     button:SetPoint("LEFT", 0, 0)
+                    
+                    -- Capture senderName for the closure
                     local senderName = postingData.sender
                     local lowerText = string.lower(postingData.text or "")
+                    
                     if string.find(lowerText, "lfg") then
                         button:SetText("INVITE")
                         button:SetScript("OnClick", function()
@@ -245,7 +248,10 @@ function UpdateMainFrame()
                         button:SetText("WHISPER")
                         button:SetScript("OnClick", function()
                             if senderName then
-                                ChatFrame_OpenChat("/w " .. senderName .. " ")
+                                local editBox = ChatFrame1EditBox
+                                editBox:Show()
+                                editBox:SetFocus()
+                                editBox:SetText("/w " .. senderName .. " ")
                             end
                         end)
                     end
