@@ -144,11 +144,10 @@ local keywords = {
 -- Initialize Instance Checkboxes
 local instanceCheckboxes = {}
 
--- === FIXED FUNCTION FOR FINDING TABS ===
 local function GetOrCreateLFGChatFrame()
     -- Loop 1 to 7 to find existing tab using the correct API
     for i = 1, 7 do
-        local name = GetChatWindowInfo(i) -- Returns name, fontSize, etc.
+        local name = GetChatWindowInfo(i)
         if (name == "LFG Filter") then
             return getglobal("ChatFrame"..i)
         end
@@ -260,7 +259,6 @@ function UpdateMainFrame()
                             end
                         end)
                     else
-                        -- WHISPER BUTTON LOGIC
                         button:SetText("WHISPER")
                         button:SetScript("OnClick", function()
                             if senderName then
@@ -643,7 +641,6 @@ f:SetScript("OnEvent", function()
     local language = arg3
     local channelNumber = arg8
     
-    -- Scans channels 2, 4, 5
     if (channelNumber == 2 or channelNumber == 4 or channelNumber == 5) then
       CleanupOldEntries()
       local lowerMsg = string.lower(msg)
@@ -669,6 +666,8 @@ f:SetScript("OnEvent", function()
                     targetFrame:AddMessage(formattedMsg)
                 end
                 
+                -- STOP SEARCHING AFTER FIRST MATCH
+                break 
               end
             end
           end
