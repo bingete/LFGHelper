@@ -50,7 +50,7 @@ mainTitle:SetText("LFG Helper")
 -- 2. FILTER FRAME
 local filterFrame = CreateFrame("Frame", "LFGHelperFilterFrame", UIParent)
 filterFrame:SetFrameStrata("HIGH")
-filterFrame:SetWidth(550) -- Set specific size from XML OnLoad
+filterFrame:SetWidth(550) 
 filterFrame:SetHeight(450)
 filterFrame:SetPoint("CENTER", UIParent, "CENTER")
 filterFrame:SetBackdrop(backdrop)
@@ -132,7 +132,7 @@ scrollFrame:SetScrollChild(scrollContent)
 
 
 -- =============================================================
---  LOGIC (Original LFGHelper.lua)
+--  LOGIC & DATA
 -- =============================================================
 
 local db_version = 1180
@@ -145,14 +145,31 @@ local keywords = {
 -- Initialize Instance Checkboxes
 local instanceCheckboxes = {}
 
+-- Helper to create/get the chat tab
+local function GetOrCreateLFGChatFrame()
+    for i = 1, 7 do
+        local frameName = "ChatFrame" .. i
+        local frame = getglobal(frameName)
+        if frame and frame.name == "LFG Filter" then
+            return frame
+        end
+    end
+    -- Create new tab
+    local newFrame = FCF_OpenNewWindow("LFG Filter")
+    if newFrame then
+        ChatFrame_RemoveAllMessageGroups(newFrame)
+        ChatFrame_RemoveAllChannels(newFrame) 
+        return newFrame
+    end
+    return nil
+end
+
 local function extractDungeonName(text)
   text = string.lower(text)  -- Ensure case-insensitive
   for _, data in ipairs(LFGHelperInstancesDB) do
     if type(data.acronym) == "table" then
-      -- Multiple acronyms
       for _, alias in ipairs(data.acronym) do
         local acronym = string.lower(alias)
-        -- Use pattern matching with boundaries
         local pattern1 = "[^%a]" .. acronym .. "[^%a]"
         local pattern2 = "^" .. acronym .. "[^%a]"
         local pattern3 = "[^%a]" .. acronym .. "$"
@@ -169,22 +186,21 @@ local function extractDungeonName(text)
 end
 
 local function SanitizeInstanceName(name)
-    -- normalize case and replace multiple spaces with one underscore
     name = string.lower(name)
     name = string.gsub(name, "%s+", "_")
     return name
 end
 
 local function CleanupOldEntries()
-    local threshold = (LFGHelperSettings.cleanupMinutes or 15) * 60  -- fallback to 15 minutes if empty
+    local threshold = (LFGHelperSettings.cleanupMinutes or 15) * 60
     local count = table.getn(LFGHelperPostingDB)
-    for i = count, 1, -1 do  -- backwards loop to safely remove
+    for i = count, 1, -1 do
         local data = LFGHelperPostingDB[i]
         if time() - data.timestamp > threshold then
             table.remove(LFGHelperPostingDB, i)
         end
     end
-    UpdateMainFrame() -- update the main frame when cleanup is done
+    UpdateMainFrame()
 end
 
 function UpdateMainFrame()
@@ -232,8 +248,10 @@ function UpdateMainFrame()
                     button:SetWidth(60)
                     button:SetHeight(rowHeight)
                     button:SetPoint("LEFT", 0, 0)
+                    
                     local senderName = postingData.sender
                     local lowerText = string.lower(postingData.text or "")
+                    
                     if string.find(lowerText, "lfg") then
                         button:SetText("INVITE")
                         button:SetScript("OnClick", function()
@@ -242,10 +260,14 @@ function UpdateMainFrame()
                             end
                         end)
                     else
+                        -- FIXED WHISPER BUTTON
                         button:SetText("WHISPER")
                         button:SetScript("OnClick", function()
                             if senderName then
-                                ChatFrame_OpenChat("/w " .. senderName .. " ")
+                                local editBox = ChatFrame1EditBox
+                                editBox:Show()
+                                editBox:SetFocus()
+                                editBox:SetText("/w " .. senderName .. " ")
                             end
                         end)
                     end
@@ -297,7 +319,7 @@ end
 function senderAlreadyPosted(sender)
     for index, posting in ipairs(LFGHelperPostingDB) do
         if posting.sender == sender then
-            return index  -- This is a numeric index
+            return index
         end
     end
     return nil
@@ -306,14 +328,12 @@ end
 function CreateOrUpdatePosting(sender, instance, sanitized_instance, msg, channelNumber, keyword)
     local index = senderAlreadyPosted(sender)
     CleanupOldEntries()
-    if index then -- if an entry has been found, update this entry
-        -- Update existing entry
+    if index then
         LFGHelperPostingDB[index].instance = instance
         LFGHelperPostingDB[index].sanitized_instance = sanitized_instance
         LFGHelperPostingDB[index].text = msg
         LFGHelperPostingDB[index].timestamp = time()
     else
-        -- Insert new entry
         table.insert(LFGHelperPostingDB, {
             sender = sender,
             instance = instance,
@@ -326,7 +346,7 @@ function CreateOrUpdatePosting(sender, instance, sanitized_instance, msg, channe
 end
 
 function InitializeVisibleInstance()
-  wipe(LFGHelperVisibleInstances) -- reset table
+  wipe(LFGHelperVisibleInstances)
 
   for _, data in ipairs(LFGHelperInstancesDB) do
     if data.show then
@@ -351,7 +371,6 @@ function RefreshInstanceCheckboxes()
     end
 end
 
-
 function CreateInstanceCheckboxes()
     local rowsPerColumnRaids = 3
     local rowsPerColumnDungeons = 13
@@ -359,7 +378,6 @@ function CreateInstanceCheckboxes()
     local yOffset = -20
 
     local function CreateSection(title, instanceType, rowsPerColumn, yStart)
-        -- Title Label
         local titleFont = LFGHelperFilterFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         titleFont:SetText(title)
         titleFont:SetPoint("TOPLEFT", LFGHelperFilterFrame, "TOPLEFT", 25, yStart)
@@ -377,7 +395,6 @@ function CreateInstanceCheckboxes()
                 local sanitizedName = SanitizeInstanceName(data.instanceName)
                 LFGHelperVisibleInstances[sanitizedName] = (data.show == 1 or data.show == true)
 
-                -- Only create if not already created
                 if not instanceCheckboxes[sanitizedName] then
                     local checkbox = CreateFrame("CheckButton", "LFGInstanceCheckbox_"..sanitizedName, LFGHelperFilterFrame, "UICheckButtonTemplate")
                     checkbox:SetWidth(20)
@@ -409,14 +426,10 @@ function CreateInstanceCheckboxes()
     CreateSection("Dungeons", "dungeon", rowsPerColumnDungeons, nextSectionY)
 end
 
--- Function to populate the option window
 function LoadLFGHelperOptions()
     local frame = LFGHelperOptionFrame
     local cleanupMinutes = LFGHelperSettings.cleanupMinutes or 15
 
-    -- =========================
-    -- Cleanup Slider
-    -- =========================
     if not frame.cleanupSlider then
         local slider = CreateFrame("Slider", "LFGHelperCleanupSlider", frame, "OptionsSliderTemplate")
         slider:SetWidth(200)
@@ -446,22 +459,16 @@ function LoadLFGHelperOptions()
         frame.cleanupSliderValueText:SetText(cleanupMinutes .. " minutes")
     end
 
-    -- =========================
-    -- Continue Scanning Checkbox
-    -- =========================
     if not frame.continueScanCheckbox then
         local check = CreateFrame("CheckButton", "LFGHelperContinueScanCheck", frame, "UICheckButtonTemplate")
         check:SetPoint("TOPLEFT", frame.cleanupSlider, "BOTTOMLEFT", 0, -40)
 
-        -- Create label manually
         local label = check:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         label:SetPoint("LEFT", check, "RIGHT", 5, 0)
         label:SetText("Continue scanning while window is closed")
 
-        -- initialize from saved variable
         check:SetChecked(LFGHelperSettings.continueScanning or false)
 
-        -- save on click
         check:SetScript("OnClick", function()
         LFGHelperSettings.continueScanning = this:GetChecked() and true or false
         end)
@@ -471,7 +478,6 @@ function LoadLFGHelperOptions()
         frame.continueScanCheckbox:SetChecked(LFGHelperSettings.continueScanning or false)
     end
 end
-
 
 function CreateLFGHelperMinimapButton()
     local minimapButton = CreateFrame("Button", "LFGHelperMinimapButton", Minimap)
@@ -498,7 +504,7 @@ function CreateLFGHelperMinimapButton()
     texture:SetAllPoints(minimapButton)
     minimapButton.texture = texture
     minimapButton:SetScript("OnClick", function()
-      local button = arg1  -- In 1.12, use arg1 instead of self/button arguments
+      local button = arg1 
 
       if button == "LeftButton" then
           if LFGHelperFrame:IsVisible() then
@@ -583,7 +589,6 @@ function LFGHelper_OnLoad()
     if not LFGHelperSettings then
       LFGHelperSettings = {}
     end
-    -- Default fallback in case cleanupMinutes isn't set
     if not LFGHelperSettings.cleanupMinutes then
         LFGHelperSettings.cleanupMinutes = 15
     end
@@ -591,6 +596,7 @@ function LFGHelper_OnLoad()
         LFGHelperSettings.continueScanning = false
     end
 end
+
 -- Create main event frame
 local f = CreateFrame("Frame")
 f:RegisterEvent("CHAT_MSG_CHANNEL")
@@ -622,7 +628,6 @@ f:SetScript("OnEvent", function()
             end
 
         else
-            -- Default toggle if no argument is provided
             if LFGHelperFrame:IsVisible() then
                 LFGHelperFrame:Hide()
             else
@@ -637,7 +642,8 @@ f:SetScript("OnEvent", function()
     local sender = arg2
     local language = arg3
     local channelNumber = arg8
-    -- ADDED CHANNEL 5 HERE AS PER YOUR PREVIOUS REQUEST
+    
+    -- SCANS CHANNELS 2, 4, AND 5
     if (channelNumber == 2 or channelNumber == 4 or channelNumber == 5) then
       CleanupOldEntries()
       local lowerMsg = string.lower(msg)
@@ -647,10 +653,24 @@ f:SetScript("OnEvent", function()
             if dungeonName then
               local sanitizedName = SanitizeInstanceName(dungeonName)
               if LFGHelperVisibleInstances[sanitizedName] then
+                
+                -- 1. Store the post
                 CreateOrUpdatePosting(sender, dungeonName, sanitizedName, msg, channelNumber, keywords[i])
+                
+                -- 2. Update Main Window if open
                 if LFGHelperFrame:IsVisible() then
                     UpdateMainFrame()
                 end
+                
+                -- 3. Print to Special "LFG Filter" Chat Tab
+                local targetFrame = GetOrCreateLFGChatFrame()
+                if targetFrame then
+                    local playerLink = "|Hplayer:" .. sender .. "|h|cff33ff99[" .. sender .. "]|r|h"
+                    local instanceTag = "|cff00ccff[" .. dungeonName .. "]|r"
+                    local formattedMsg = instanceTag .. " " .. playerLink .. ": " .. msg
+                    targetFrame:AddMessage(formattedMsg)
+                end
+                
               end
             end
           end
