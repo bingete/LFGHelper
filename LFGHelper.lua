@@ -144,16 +144,17 @@ local keywords = {
 -- Initialize Instance Checkboxes
 local instanceCheckboxes = {}
 
--- Helper to create/get the chat tab
+-- === FIXED FUNCTION FOR FINDING TABS ===
 local function GetOrCreateLFGChatFrame()
+    -- Loop 1 to 7 to find existing tab using the correct API
     for i = 1, 7 do
-        local frameName = "ChatFrame" .. i
-        local frame = getglobal(frameName)
-        if frame and frame.name == "LFG Filter" then
-            return frame
+        local name = GetChatWindowInfo(i) -- Returns name, fontSize, etc.
+        if (name == "LFG Filter") then
+            return getglobal("ChatFrame"..i)
         end
     end
-    -- Create new tab
+
+    -- If not found, create new one
     local newFrame = FCF_OpenNewWindow("LFG Filter")
     if newFrame then
         ChatFrame_RemoveAllMessageGroups(newFrame)
@@ -259,7 +260,7 @@ function UpdateMainFrame()
                             end
                         end)
                     else
-                        -- FIXED WHISPER BUTTON
+                        -- WHISPER BUTTON LOGIC
                         button:SetText("WHISPER")
                         button:SetScript("OnClick", function()
                             if senderName then
@@ -642,7 +643,7 @@ f:SetScript("OnEvent", function()
     local language = arg3
     local channelNumber = arg8
     
-    -- SCANS CHANNELS 2, 4, AND 5
+    -- Scans channels 2, 4, 5
     if (channelNumber == 2 or channelNumber == 4 or channelNumber == 5) then
       CleanupOldEntries()
       local lowerMsg = string.lower(msg)
@@ -653,15 +654,13 @@ f:SetScript("OnEvent", function()
               local sanitizedName = SanitizeInstanceName(dungeonName)
               if LFGHelperVisibleInstances[sanitizedName] then
                 
-                -- 1. Store the post
                 CreateOrUpdatePosting(sender, dungeonName, sanitizedName, msg, channelNumber, keywords[i])
                 
-                -- 2. Update Main Window if open
                 if LFGHelperFrame:IsVisible() then
                     UpdateMainFrame()
                 end
                 
-                -- 3. Print to Special "LFG Filter" Chat Tab
+                -- PRINT TO CHAT TAB
                 local targetFrame = GetOrCreateLFGChatFrame()
                 if targetFrame then
                     local playerLink = "|Hplayer:" .. sender .. "|h|cff33ff99[" .. sender .. "]|r|h"
